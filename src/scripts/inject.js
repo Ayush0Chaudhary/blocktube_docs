@@ -16,6 +16,11 @@
   // PIECE OF HORSE SHIT, SHIPPING FOR NOW
   //
   // Thanks to uBlock origin {comment by author}
+  //
+  //
+  // Iss function ka main kaam yeh h kki object pakadna h and uski prop define krni h kisi tarah, 
+  // inn prop ko hum object ko block krne waste istmal kr sakte h.
+  // ..
   const defineProperty = function(chain, cValue, middleware = undefined) {
     let aborted = false;
     const mustAbort = function(v) {
@@ -225,7 +230,7 @@
     publishTimeText: 'publishedTimeText.simpleText',
     percentWatched: 'thumbnailOverlays.thumbnailOverlayResumePlaybackRenderer.percentDurationWatched'
   };
-
+  // these are rules
   const filterRules = {
     main: {
       compactMovieRenderer: {
@@ -442,7 +447,6 @@
   function ObjectFilter(object, filterRules, postActions = [], contextMenus = false) {
 
     // `this` (the object being constructed) 
-
     // ensure that the constructor is called with the new keyword, warna kabhi kabhi gand lagg jaati h
     if (!(this instanceof ObjectFilter))
   
@@ -465,31 +469,62 @@
     return this;
   }
 
+
+  // this method inside object filter checks if data {inside storage} is empty\
+  //
+  // In summary, this method is checking a variety of conditions related to properties 
+  // and values in the storageData object and some other variables, 
+  // and it returns true only if none of these conditions are met. 
+  // Otherwise, it returns false. 
   ObjectFilter.prototype.isDataEmpty = function () {
     if (storageData.options.shorts || storageData.options.movies || storageData.options.mixes) return false;
+    // isNaN = (is Not-a-Number)
+    //
+    // check if percent_watched_hide is a number
     if (!isNaN(storageData.options.percent_watched_hide)) return false;
 
+    // check if vidLength[0] or vidLength[1] is a number
     if (!isNaN(storageData.filterData.vidLength[0]) ||
         !isNaN(storageData.filterData.vidLength[1])) return false;
 
+    // check if storageData.filterData[regexProps[idx]].length  is greater than zero, 
+    // matlab, some sort of filter is requested, thus return data is not emtpy
     for (let idx = 0; idx < regexProps.length; idx += 1) {
       if (storageData.filterData[regexProps[idx]].length > 0) return false;
     }
 
+    // jab event ata h tab dekhte h iskos {not sure}
     return !jsFilterEnabled;
   };
 
+  // another function of objectfilter, taked in 3 things
   ObjectFilter.prototype.matchFilterData = function (filters, obj, objectType) {
+    
+    // ig jo remove nhi krni h
     const friendlyVideoObj = {};
 
+    // filters ki sari keys me iterate krr rha h
     let doBlock = Object.keys(filters).some((h) => {
+      // filter uthata h ek ek karke
       const filterPath = filters[h];
+
+      
+      // if undefined then return false, ig unlikely
       if (filterPath === undefined) return false;
 
+      // storageData.filterData is array sent by the storage
+      // checking same key vqalue ke sath kya hota h
+      // 
+      // `properties` is just a REGEX TO FIND THE filter in the big text data
       const properties = storageData.filterData[h];
+
+      // agar key ki value belong to regex and prop is invalid then do the deed
       if (regexProps.includes(h) && (properties === undefined || properties.length === 0 && !jsFilterEnabled)) return false;
 
+      // filter path can be an array and also an single entity so below techniique
       const filterPathArr = filterPath instanceof Array ? filterPath : [filterPath];
+      
+
       let value;
       for (let idx = 0; idx < filterPathArr.length; idx += 1) {
         value = getObjectByPath(obj, filterPathArr[idx]);
@@ -573,6 +608,7 @@
   }
 
   ObjectFilter.prototype.matchFilterRule = function (obj) {
+
     if (this.isDataEmpty()) return [];
 
     return Object.keys(this.filterRules).reduce((res, h) => {
@@ -593,8 +629,9 @@
           related = undefined;
         }
 
+
         const isMatch = this.isExtendedMatched(filteredObject, h) || this.matchFilterData(properties, filteredObject, h);
-        if (isMatch) {
+        if (!isMatch) {
           res.push({
             name: h,
             customFunc,
@@ -602,13 +639,13 @@
           });
         }
       }
+
       return res;
     }, []);
   };
 
   ObjectFilter.prototype.filter = function (obj = this.object) {
     let deletePrev = false;
-
     // we reached the end of the object
     if (typeof obj !== 'object' || obj === null) {
       return deletePrev;
@@ -616,6 +653,7 @@
 
     // object filtering
     const matchedRules = this.matchFilterRule(obj);
+    // console.log(matchedRules);
     matchedRules.forEach((r) => {
       let customRet = true;
       if (r.customFunc !== undefined) {
@@ -686,7 +724,7 @@
       return false;
     }
 
-    const message = (storageData.options.block_message) || '';
+    const message = (storageData.options.block_message) || 'Study bro';
     for (const prop of Object.getOwnPropertyNames(ytData)) {
       try {
         delete ytData[prop];
@@ -832,7 +870,7 @@
       }
     }
   }
-
+  // 
   function getObjectByPath(obj, path, def = undefined) {
     const paths = (path instanceof Array) ? path : path.split('.');
     let nextObj = obj;
@@ -881,7 +919,6 @@
 
   function transformToRegExp(data) {
     if (!has.call(data, 'filterData')) return;
-
     regexProps.forEach((p) => {
       if (has.call(data.filterData, p)) {
         data.filterData[p] = data.filterData[p].map((v) => {
@@ -1115,66 +1152,92 @@
   }
 
   function startHook() {
+    console.log("this is where hook starts");
     if (window.location.pathname.startsWith('/embed/')) {
+      console.log("the case of embedded video,  donnt think need it rn");
       const ytConfigPlayerConfig = getObjectByPath(window, 'yt.config_.PLAYER_VARS');
       if (typeof ytConfigPlayerConfig === 'object' && ytConfigPlayerConfig !== null) {
         try {
+          console.log("embed ke aur inside, definatly should no work, the case when every thing is alright");
           ytConfigPlayerConfig.raw_player_response = JSON.parse(ytConfigPlayerConfig.embedded_player_response);
         } catch (e) { }
+        console.log("than randomly ytConfigPlayerConfig player ki saari bk chokar start a object filter");
         ObjectFilter(window.yt.config_, filterRules.ytPlayer, [playerMiscFilters]);
       } else {
+        console.log("embed but ytConfigPlayerConfig me dikkat");
         defineProperty('yt.config_', undefined, (v) => {
           try {
             if (has.call(v, 'PLAYER_VARS')) {
+              console.log(1173);
               v.PLAYER_VARS.raw_player_response = JSON.parse(v.PLAYER_VARS.embedded_player_response);
             }
           } catch (e) { }
+          console.log(1177);
           ObjectFilter(window.yt.config_, filterRules.ytPlayer, [playerMiscFilters])
         });
       }
     }
-
+    console.log('embed wala if khatam');
     const ytPlayerconfig = getObjectByPath(window, 'ytplayer.config');
     if (typeof ytPlayerconfig === 'object' && ytPlayerconfig !== null) {
-      ObjectFilter(window.ytplayer.config, filterRules.ytPlayer, [playerMiscFilters]);
+      console.log('ytplayer sahi tha, no problem in object');
+      // ObjectFilter(window.ytplayer.config, filterRules.ytPlayer, [playerMiscFilters]);
     } else {
+      // isme gya kyu option nhi tha kuch aur
+      console.log('ytplayer me dikkat :(');
       defineProperty('ytplayer.config', undefined, (v) => {
+        //// never came here
         const playerResp = getObjectByPath(v, 'args.player_response');
         if (playerResp) {
+          console.log(1192);
           try {
             v.args.raw_player_response = JSON.parse(playerResp);
           } catch (e) { }
         }
-        ObjectFilter(window.ytplayer.config, filterRules.ytPlayer, [playerMiscFilters])
+        console.log(1197);
+        // ObjectFilter(window.ytplayer.config, filterRules.ytPlayer, [playerMiscFilters])
       });
     }
 
-    if (typeof window.ytInitialGuideData === 'object' && window.ytInitialGuideData !== null) {
-      ObjectFilter(window.ytInitialGuideData, filterRules.guide);
-    } else {
-      defineProperty('ytInitialGuideData', undefined, (v) => ObjectFilter(v, filterRules.guide));
-    }
+    // if (typeof window.ytInitialGuideData === 'object' && window.ytInitialGuideData !== null) {
+    //   console.log(1203);
+    //   ObjectFilter(window.ytInitialGuideData, filterRules.guide);
+    // } else {
+
+    //   console.log(1206);
+    //   defineProperty('ytInitialGuideData', undefined, (v) =>{console.log(1206); ObjectFilter(v, filterRules.guide)});
+    // }
 
     if (typeof window.ytInitialPlayerResponse === 'object' && window.ytInitialPlayerResponse !== null) {
+      console.log(1211); //// isme bhi na gyo dikra when search, otherwise went in
+
+      
       ObjectFilter(window.ytInitialPlayerResponse, filterRules.ytPlayer);
     } else {
-      defineProperty('ytInitialPlayerResponse', undefined, (v) => ObjectFilter(v, filterRules.ytPlayer));
+      console.log(1214); 
+            ///////////// this blocking player
+      defineProperty('ytInitialPlayerResponse', undefined, (v) => {console.log(1215); ObjectFilter(v, filterRules.ytPlayer)});
     }
 
     const postActions = [fixAutoplay];
     if (typeof window.ytInitialData === 'object' && window.ytInitialData !== null) {
+      console.log(1220);
       ObjectFilter(window.ytInitialData, mergedFilterRules, (window.ytInitialData.contents && currentBlock) ? postActions.concat(redirectToNext) : postActions, true);
     } else {
+      
       defineProperty('ytInitialData', undefined, (v) => {
-        ObjectFilter(v, mergedFilterRules, (v.contents && currentBlock) ? postActions.concat(redirectToNext) : postActions, true)
+        console.log(1225); //// isme bhi jara when direct video
+        //// this removes the data except the actual video
+        // ObjectFilter(v, mergedFilterRules, (v.contents && currentBlock) ? postActions.concat(redirectToNext) : postActions, true)
       });
     }
-
+    console.log(1229);
     window.btDispatched = true;
     window.dispatchEvent(new Event('blockTubeReady'));
   }
 
   function storageReceived(data) {
+    console.log('storageReceived');
     if (data === undefined) return;
     transformToRegExp(data);
     if (data.options.trending) blockTrending(data);
@@ -1355,6 +1418,7 @@
 
     switch (event.data.type) {
       case 'storageData': {
+        // console.log(event.data.data);
         storageReceived(event.data.data);
         break;
       }

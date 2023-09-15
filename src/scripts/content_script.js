@@ -4,11 +4,13 @@
   const utils = {
     // TODO: write the reason of the fucntion
     sendStorage() {
+      console.log(globalStorage);
       window.postMessage({
         from: 'BLOCKTUBE_CONTENT',
         // type define kiya h bas, extra backchodi, dont know if important
         type: 'storageData',
         // jo bhi availbale h as data bhje do
+        
         data: compiledStorage || globalStorage,
         // this below line is saying the similar port ko hi bhejna, kisi ko bhi mat bhej dena
       }, document.location.origin);
